@@ -3,6 +3,7 @@ Train an XGBoost churn prediction model on the Telco Customer Churn dataset,
 compute SHAP values for interpretability, and save artifacts for the API.
 """
 
+import os
 import pandas as pd
 import numpy as np
 import joblib
@@ -91,6 +92,7 @@ def main():
     explainer = shap.TreeExplainer(model)
 
     # Save artifacts
+    os.makedirs(MODEL_DIR, exist_ok=True)
     joblib.dump(model, f"{MODEL_DIR}/churn_model.joblib")
     joblib.dump(explainer, f"{MODEL_DIR}/shap_explainer.joblib")
 
