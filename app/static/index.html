@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Churn Prediction System</title>
+<style>
+  :root {
+    --bg: #0f1117;
+    --card: #171a23;
+    --accent: #6c5ce7;
+    --accent2: #00d4a0;
+    --danger: #ff5d5d;
+    --text: #e8e8ec;
+    --muted: #9498a8;
+    --border: #2a2e3b;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 32px 16px;
+  }
+  .container { max-width: 880px; margin: 0 auto; }
+  header { text-align: center; margin-bottom: 28px; }
+  header h1 { margin: 0 0 6px; font-size: 28px; }
+  header p { margin: 0; color: var(--muted); }
+  .badge {
+    display: inline-block; background: var(--card); border: 1px solid var(--border);
+    border-radius: 999px; padding: 4px 12px; font-size: 12px; color: var(--accent2);
+    margin-top: 10px;
+  }
+  .card {
+    background: var(--card); border: 1px solid var(--border); border-radius: 16px;
+    padding: 24px; margin-bottom: 20px;
+  }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; }
+  label { display: block; font-size: 13px; color: var(--muted); margin-bottom: 4px; }
+  select, input {
+    width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--border);
+    background: #11141c; color: var(--text); font-size: 14px;
+  }
+  select:focus, input:focus { outline: 2px solid var(--accent); }
+  .actions { display: flex; gap: 12px; margin-top: 20px; }
+  button {
+    background: var(--accent); color: #fff; border: none; border-radius: 10px;
+    padding: 12px 22px; font-size: 15px; cursor: pointer; font-weight: 600;
+  }
+  button.secondary { background: transparent; border: 1px solid var(--border); color: var(--text); }
+  button:hover { opacity: 0.9; }
+  #result { display: none; }
+  .result-header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
+  .prob {
+    font-size: 42px; font-weight: 800;
+  }
+  .prob.high { color: var(--danger); }
+  .prob.low { color: var(--accent2); }
+  .pill {
+    padding: 6px 16px; border-radius: 999px; font-weight: 600; font-size: 14px;
+  }
+  .pill.churn { background: rgba(255,93,93,0.15); color: var(--danger); }
+  .pill.no-churn { background: rgba(0,212,160,0.15); color: var(--accent2); }
+  .factor {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 10px 14px; border: 1px solid var(--border); border-radius: 10px; margin-top: 10px;
+  }
+  .factor .name { font-weight: 600; }
+  .factor .effect { font-size: 13px; color: var(--muted); }
+  .factor .bar-wrap { flex: 1; margin: 0 16px; height: 8px; background: #11141c; border-radius: 4px; overflow: hidden; }
+  .factor .bar { height: 100%; }
+  .bar.up { background: var(--danger); }
+  .bar.down { background: var(--accent2); }
+  .loading { text-align: center; color: var(--muted); padding: 12px 0; display: none; }
+  footer { text-align: center; color: var(--muted); font-size: 12px; margin-top: 24px; }
+  a { color: var(--accent2); }
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <h1>📉 Churn Prediction System</h1>
+    <p>Fill in a customer's profile to predict their churn risk in real time.</p>
+    <span class="badge">XGBoost · SHAP · FastAPI</span>
+  </header>
+
+  <div class="card">
+    <form id="churn-form">
+      <div class="grid">
+        <div>
+          <label>Gender</label>
+          <select name="gender">
+            <option>Female</option><option>Male</option>
+          </select>
+        </div>
+        <div>
+          <label>Senior Citizen</label>
+          <select name="SeniorCitizen">
+            <option value="0">No</option><option value="1">Yes</option>
+          </select>
+        </div>
+        <div>
+          <label>Partner</label>
+          <select name="Partner"><option>Yes</option><option>No</option></select>
+        </div>
+        <div>
+          <label>Dependents</label>
+          <select name="Dependents"><option>No</option><option>Yes</option></select>
+        </div>
+        <div>
+          <label>Tenure (months)</label>
+          <input type="number" name="tenure" value="12" min="0" max="100" />
+        </div>
+        <div>
+          <label>Phone Service</label>
+          <select name="PhoneService"><option>Yes</option><option>No</option></select>
+        </div>
+        <div>
+          <label>Multiple Lines</label>
+          <select name="MultipleLines">
+            <option>No</option><option>Yes</option><option>No phone service</option>
+          </select>
+        </div>
+        <div>
+          <label>Internet Service</label>
+          <select name="InternetService">
+            <option>Fiber optic</option><option>DSL</option><option>No</option>
+          </select>
+        </div>
+        <div>
+          <label>Online Security</label>
+          <select name="OnlineSecurity">
+            <option>No</option><option>Yes</option><option>No internet service</option>
+          </select>
+        </div>
+        <div>
+          <label>Online Backup</label>
+          <select name="OnlineBackup">
+            <option>No</option><option>Yes</option><option>No internet service</option>
+          </select>
+        </div>
+        <div>
+          <label>Device Protection</label>
+          <select name="DeviceProtection">
+            <option>No</option><option>Yes</option><option>No internet service</option>
+          </select>
+        </div>
+        <div>
+          <label>Tech Support</label>
+          <select name="TechSupport">
+            <option>No</option><option>Yes</option><option>No internet service</option>
+          </select>
+        </div>
+        <div>
+          <label>Streaming TV</label>
+          <select name="StreamingTV">
+            <option>No</option><option>Yes</option><option>No internet service</option>
+          </select>
+        </div>
+        <div>
+          <label>Streaming Movies</label>
+          <select name="StreamingMovies">
+            <option>No</option><option>Yes</option><option>No internet service</option>
+          </select>
+        </div>
+        <div>
+          <label>Contract</label>
+          <select name="Contract">
+            <option>Month-to-month</option><option>One year</option><option>Two year</option>
+          </select>
+        </div>
+        <div>
+          <label>Paperless Billing</label>
+          <select name="PaperlessBilling"><option>Yes</option><option>No</option></select>
+        </div>
+        <div>
+          <label>Payment Method</label>
+          <select name="PaymentMethod">
+            <option>Electronic check</option>
+            <option>Mailed check</option>
+            <option>Bank transfer (automatic)</option>
+            <option>Credit card (automatic)</option>
+          </select>
+        </div>
+        <div>
+          <label>Monthly Charges ($)</label>
+          <input type="number" step="0.01" name="MonthlyCharges" value="70.35" />
+        </div>
+        <div>
+          <label>Total Charges ($)</label>
+          <input type="number" step="0.01" name="TotalCharges" value="845.5" />
+        </div>
+      </div>
+
+      <div class="actions">
+        <button type="submit">Predict Churn</button>
+        <button type="button" class="secondary" id="reset-btn">Reset</button>
+      </div>
+    </form>
+
+    <div class="loading" id="loading">Scoring customer…</div>
+  </div>
+
+  <div class="card" id="result">
+    <div class="result-header">
+      <div>
+        <div style="color: var(--muted); font-size: 13px;">Churn probability</div>
+        <div class="prob" id="prob-value">0%</div>
+      </div>
+      <div class="pill" id="prediction-pill">—</div>
+    </div>
+
+    <h3 style="margin-top: 24px;">Top factors influencing this prediction</h3>
+    <div id="factors"></div>
+  </div>
+
+  <footer>
+    Powered by XGBoost + SHAP · <a href="/docs" target="_blank">API docs</a>
+  </footer>
+</div>
+
+<script>
+const form = document.getElementById('churn-form');
+const resultCard = document.getElementById('result');
+const loading = document.getElementById('loading');
+
+form.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  loading.style.display = 'block';
+  resultCard.style.display = 'none';
+
+  const formData = new FormData(form);
+  const payload = {};
+  for (const [key, value] of formData.entries()) {
+    if (key === 'tenure' || key === 'SeniorCitizen') {
+      payload[key] = parseInt(value, 10);
+    } else if (key === 'MonthlyCharges' || key === 'TotalCharges') {
+      payload[key] = parseFloat(value);
+    } else {
+      payload[key] = value;
+    }
+  }
+
+  try {
+    const res = await fetch('/predict', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || 'Prediction failed');
+
+    const probPct = (data.churn_probability * 100).toFixed(1);
+    const probEl = document.getElementById('prob-value');
+    probEl.textContent = probPct + '%';
+    probEl.className = 'prob ' + (data.churn_probability >= 0.5 ? 'high' : 'low');
+
+    const pill = document.getElementById('prediction-pill');
+    pill.textContent = data.churn_prediction;
+    pill.className = 'pill ' + (data.churn_prediction === 'Churn' ? 'churn' : 'no-churn');
+
+    const factorsEl = document.getElementById('factors');
+    factorsEl.innerHTML = '';
+    const maxAbs = Math.max(...data.top_factors.map(f => Math.abs(f.shap_contribution)), 0.001);
+
+    data.top_factors.forEach(f => {
+      const pct = Math.min(100, (Math.abs(f.shap_contribution) / maxAbs) * 100);
+      const up = f.shap_contribution > 0;
+      const div = document.createElement('div');
+      div.className = 'factor';
+      div.innerHTML = `
+        <div class="name">${f.feature}</div>
+        <div class="bar-wrap"><div class="bar ${up ? 'up' : 'down'}" style="width:${pct}%"></div></div>
+        <div class="effect">${f.effect}</div>
+      `;
+      factorsEl.appendChild(div);
+    });
+
+    resultCard.style.display = 'block';
+  } catch (err) {
+    alert('Error: ' + err.message);
+  } finally {
+    loading.style.display = 'none';
+  }
+});
+
+document.getElementById('reset-btn').addEventListener('click', () => {
+  resultCard.style.display = 'none';
+});
+</script>
+</body>
+</html>
