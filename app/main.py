@@ -28,8 +28,8 @@ app.add_middleware(
 # Paths (resolved relative to this file, so working directory doesn't matter)
 # ---------------------------------------------------------------------------
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-MODEL_DIR = os.path.join(BASE_DIR, "model")
-STATIC_DIR = os.path.join(BASE_DIR, "app", "static")
+MODEL_DIR = os.path.join(BASE_DIR, "..", "model")
+STATIC_DIR = os.path.join(BASE_DIR, "static")
 
 # ---------------------------------------------------------------------------
 # Load artifacts at startup
